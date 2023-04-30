@@ -3,6 +3,7 @@ require("dotenv").config();
 
 const { PROJECT_ID, MNEMONIC } = process.env;
 module.exports = {
+  contracts_build_directory: "./contracts",
   networks: {
     development: {
       host: "localhost",
@@ -13,13 +14,15 @@ module.exports = {
 
     //sepolia network
     sepolia: {
+      networkCheckTimeout: 10000,
       provider: () =>
         new HDWalletProvider(
           MNEMONIC,
           `https://eth-sepolia.g.alchemy.com/v2/${PROJECT_ID}`
         ),
       network_id: 11155111, // Sepolia id
-      networkCheckTimeout: 10000,
+      confirmations: 2,
+      timeoutBlocks: 200,
     },
 
     mainnet: {
@@ -37,7 +40,7 @@ module.exports = {
 
   compilers: {
     solc: {
-      version: "^0.8.9",
+      version: "^0.8.13",
       settings: {
         optimizer: {
           enabled: true, // Default: false
