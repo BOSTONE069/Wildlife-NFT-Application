@@ -1,19 +1,48 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract NftMarket is ER712URIStorage, Ownable{
-    counter
-    constructor() ERC721("WildLifeNFT", "WCT") {}
+contract NftMarket is ER712URIStorage, Ownable {
+    using Counters for Counters.counter;
+
+    struct NftItem {
+        uint256 tokenId;
+        address creator;
+        uint256 price;
+        bool isListed;
+    }
+
+    uint public listingPrice = 0.025 ether;
+
+    Counters.Counter private _listedItems;
+    Counters.Counter private _tokenIds;
+
+    mapping(string => bool) private _usedTokenURIs;
+    mapping(uint => NftItem) private _idToNftItem;
+
+    mapping(address => mapping(uint => uint)) private _ownedTokens;
+    mapping(unit => uint) private _idToOwnedIndex;
+
+    unit256[] private _allNfts;
+    mapping(unit => uint) private _idToNftIndex;
+
+    event NftItemCreated(
+        uint indexed tokenId,
+        address indexed creator,
+        uint price,
+        bool isListed
+    );
+
+    constructor() ERC721("WildLifeNFT", "WLT") {}
 
 
     function tokenURIExists(string memory _tokenURI) public view returns (bool) {
         return _usedTokensURIs[_tokenURI] == true;
     }
-    
+
 
     function tokenOfOwnerByIndex() public view returns (uint) {
 
@@ -33,6 +62,7 @@ contract NftMarket is ER712URIStorage, Ownable{
         return items;
     }
 
+    // This is function for minting tokens
     function mintToken(string memory _tokenURI, uint _price) public payable returns (uint) {
         require(tokenURIExists _tokenURI,"Token URL already exists");
         require(msg.value == listingPrice, "Price must be equal to listing");
