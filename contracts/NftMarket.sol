@@ -114,7 +114,7 @@ contract NftMarket is ER712URIStorage, Ownable {
     //This is function for craeting NFT within the contract
     function _createNFTItem(uint _tokenId, uint _price) private {
         require(_price > 0, "Price must be at least 1 wei");
-        _idVftItem[_tokenId] = NftItem(
+        _idToNftItem[_tokenId] = NftItem(
             _tokenId,
             msg.sender,
             _price,
