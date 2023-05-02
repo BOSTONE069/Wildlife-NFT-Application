@@ -27,7 +27,7 @@ contract NftMarket is ER712URIStorage, Ownable {
     mapping(uint => NftItem) private _idToNftItem;
 
     mapping(address => mapping(uint => uint)) private _ownedTokens;
-    mapping(unit => uint) private _idToOwnedIndex;
+    mapping(uint => uint) private _idToOwnedIndex;
 
     unit256[] private _allNfts;
     mapping(unit => uint) private _idToNftIndex;
@@ -46,14 +46,19 @@ contract NftMarket is ER712URIStorage, Ownable {
     function tokenURIExists(string memory _tokenURI) public view returns (bool) {
         return _usedTokensURIs[_tokenURI] == true;
     }
+    
+    //function for the getting the total supply of the NFT
+    function totalSupply() public view returns (uint) {
+        return _allNfts.length;
+        }
 
-
-    function tokenOfOwnerByIndex() public view returns (uint) {
-
+    // function for getting token of owner by index
+    function tokenOfOwnerByIndex(uint _index) public view returns (uint) {
+        return _ownedTokens[_idToOwnedIndex[_index]];
     }
 
     //This is for getting owned NFT
-    function getOwnedNfts() public view returns (NftItems [] memory) {
+    function getOwnedNfts() public view returns (NftItem[] memory) {
         uint totalNftsOwned = ERC721.balanceOf(msg.sender);
         NFTItem[] memory items = new NftItem[](totalNftsOwned);
 
@@ -69,7 +74,7 @@ contract NftMarket is ER712URIStorage, Ownable {
 
     // This is function for minting tokens
     function mintToken(string memory _tokenURI, uint _price) public payable returns (uint) {
-        require(tokenURIExists _tokenURI,"Token URL already exists");
+        require(!tokenURIExists (_tokenURI),"Token URL already exists");
         require(msg.value == listingPrice, "Price must be equal to listing");
 
         _tokenIds.increment();
@@ -77,7 +82,7 @@ contract NftMarket is ER712URIStorage, Ownable {
 
         uint newTokenId = _tokenIds.current();
         _safeMint(msg.sender, newTokenId);
-        _setTokenURI(newTokenId, _price);
+        _setTokenURI(newTokenId, _tokenURI);
         _createNftIten(newTokenId, _price);
         _usedTokenURIs[_tokenId] = true;
 
@@ -96,12 +101,12 @@ contract NftMarket is ER712URIStorage, Ownable {
         _listedItems.decrement();
 
         _transfer(owner, msg.sender, _tokenId);
-        payable(owner).transfer(masg.value);
+        payable(owner).transfer(msg.value);
     }
 
     //This is a function for placing the NFT on sale
     function placeNftOnsale(uint _tokenId, uint _newPrice) public payable {
-        require(ERC721.ownerOf(tokenId) == msg.sender, "You are not the owner of this nft");
+        require(ERC721.ownerOf(_tokenId) == msg.sender, "You are not the owner of this nft");
         require(_idToNftItem[_tokenId].isListed == false, "Item is already on sale");
         require(msg.value == listingPrice, "Price must be equal to listing");
 
@@ -111,7 +116,7 @@ contract NftMarket is ER712URIStorage, Ownable {
     }
 
 
-    //This is function for craeting NFT within the contract
+    //This is function for creating NFT within the contract
     function _createNFTItem(uint _tokenId, uint _price) private {
         require(_price > 0, "Price must be at least 1 wei");
         _idToNftItem[_tokenId] = NftItem(
@@ -123,4 +128,17 @@ contract NftMarket is ER712URIStorage, Ownable {
 
         emit NftItemCreated(_tokenId, msg.sender, _price, true);
     }
+
+    //function to remove NFT from sale
+    function _removeNFTItem(uint _tokenId) public {
+
+        require(_idToNftItem[_tokenId].isListed == true, "Item is not on sale");
+
+        _idToNftItem[_tokenId].isListed = false;
+
+        _listedItems.decrement();
+
+        emit NftItemRemoved(_tokenId, msg.sender);
+        }
+
 }
