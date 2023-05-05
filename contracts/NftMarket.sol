@@ -164,7 +164,7 @@ contract NftMarket is ERC721URIStorage, Ownable {
     }
 
     function _beforeTokenTransfer(address from, address to, uint _tokenId) internal virtual override {
-        super _beforeTokenTransfer(from, to, _tokenId);
+        super. _beforeTokenTransfer(from, to, _tokenId);
 
         if (from == address(0)) {
             _addTokensToAllTokensEnumeration(_tokenId);
@@ -175,7 +175,7 @@ contract NftMarket is ERC721URIStorage, Ownable {
         if (to == address(0)) {
             _removeTokenFromAllTokensEnumeration(_tokenId);
         } else if (to != from) {
-            _addTokensToAllTokensEnumeration(to, _tokenId)
+            _addTokensToAllTokensEnumeration(to, _tokenId);
         }
     }
 
@@ -187,7 +187,7 @@ contract NftMarket is ERC721URIStorage, Ownable {
     function _addTokenToOwnerEnumeration(address to, uint _tokenid) private {
         uint length = ERC721.balanceOf(to);
         _ownedTokens[to][length] = _tokenId;
-        _idToOwnedIndex[_tokenId] = length
+        _idToOwnedIndex[_tokenId] = length;
 
     }
 
