@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 // This is the wildlife contract
-contract NftMarket is ER712URIStorage, Ownable {
-    using Counters for Counters.counter;
+contract NftMarket is ERC721URIStorage, Ownable {
+    using Counters for Counters.Counter;
 
     //This is the struct data for the NFT
     struct NftItem {
@@ -29,8 +29,8 @@ contract NftMarket is ER712URIStorage, Ownable {
     mapping(address => mapping(uint => uint)) private _ownedTokens;
     mapping(uint => uint) private _idToOwnedIndex;
 
-    unit256[] private _allNfts;
-    mapping(unit => uint) private _idToNftIndex;
+    uint256[] private _allNfts;
+    mapping(uint => uint) private _idToNftIndex;
 
     event NftItemCreated(
         uint indexed tokenId,
@@ -42,25 +42,59 @@ contract NftMarket is ER712URIStorage, Ownable {
      //This is the NFT Symbol
     constructor() ERC721("WildLifeNFT", "WLT") {}
 
-
-    function tokenURIExists(string memory _tokenURI) public view returns (bool) {
-        return _usedTokensURIs[_tokenURI] == true;
+    //function set listing price
+    function setListingPrice(uint _newprice) external onlyOwner {
+        require(_newprice >= 0, "Price must be least 1 wei");
+        listingPrice - _newprice;
     }
-    
+
+    //function to get NFT item
+    function getNftItem(uint _tokenId) public view returns (NftItem memory){
+        return _idToNftItem[_tokenId];
+    }
+
+    //function for listed items count
+    function getListedItemsCount() public view returns (uint count){
+        return _listedItems.current();
+    }
+    function tokenURIExists(string memory _tokenURI) public view returns (bool) {
+        return _usedTokenURIs[_tokenURI] == true;
+    }
+
     //function for the getting the total supply of the NFT
     function totalSupply() public view returns (uint) {
         return _allNfts.length;
         }
 
     // function for getting token of owner by index
-    function tokenOfOwnerByIndex(uint _index) public view returns (uint) {
-        return _ownedTokens[_idToOwnedIndex[_index]];
+    function tokenOfOwnerByIndex(address owner, uint _index) public view returns (uint) {
+        require(_index < ERC721.balanceOf(owner), 'Index out of bound');
+        return _ownedTokens[owner][_index];
+    }
+
+    function getAllNftsOnSale() public view returns(NftItem[] memory){
+        uint allItemsCounts = totalSupply();
+        uint currentIndex = 0;
+        NftItem[] memory items = new NftItem[](allItemsCounts);
+
+        for (uint i = 0; i < allItemsCounts; i++) {
+            uint tokenId = tokenByIndex(i);
+            NftItem storage item = _idToNftIndex[tokenId];
+
+            if (item.isListed) {
+                items[currentIndex] = item;
+                currentIndex++;
+            }
+        }
+
+        return items;
+
     }
 
     //This is for getting owned NFT
     function getOwnedNfts() public view returns (NftItem[] memory) {
         uint totalNftsOwned = ERC721.balanceOf(msg.sender);
-        NFTItem[] memory items = new NftItem[](totalNftsOwned);
+        NftItem[] memory items = new NftItem[](totalNftsOwned);
 
         for (uint i = 0; i < totalNftsOwned; i++) {
             uint _tokenId = tokenOfOwnerByIndex(msg.sender, i);
@@ -83,7 +117,7 @@ contract NftMarket is ER712URIStorage, Ownable {
         uint newTokenId = _tokenIds.current();
         _safeMint(msg.sender, newTokenId);
         _setTokenURI(newTokenId, _tokenURI);
-        _createNftIten(newTokenId, _price);
+        _createNftItem(newTokenId, _price);
         _usedTokenURIs[_tokenId] = true;
 
         return newTokenId;
@@ -117,7 +151,7 @@ contract NftMarket is ER712URIStorage, Ownable {
 
 
     //This is function for creating NFT within the contract
-    function _createNFTItem(uint _tokenId, uint _price) private {
+    function _createNftItem(uint _tokenId, uint _price) private {
         require(_price > 0, "Price must be at least 1 wei");
         _idToNftItem[_tokenId] = NftItem(
             _tokenId,
@@ -129,16 +163,61 @@ contract NftMarket is ER712URIStorage, Ownable {
         emit NftItemCreated(_tokenId, msg.sender, _price, true);
     }
 
-    //function to remove NFT from sale
-    function _removeNFTItem(uint _tokenId) public {
+    function _beforeTokenTransfer(address from, address to, uint _tokenId) internal virtual override {
+        super _beforeTokenTransfer(from, to, _tokenId);
 
-        require(_idToNftItem[_tokenId].isListed == true, "Item is not on sale");
-
-        _idToNftItem[_tokenId].isListed = false;
-
-        _listedItems.decrement();
-
-        emit NftItemRemoved(_tokenId, msg.sender);
+        if (from == address(0)) {
+            _addTokensToAllTokensEnumeration(_tokenId);
+        } else if (from != to) {
+            _removeTokenFromOwnerEnumeration(from, _tokenId);
         }
+
+        if (to == address(0)) {
+            _removeTokenFromAllTokensEnumeration(_tokenId);
+        } else if (to != from) {
+            _addTokensToAllTokensEnumeration(to, _tokenId)
+        }
+    }
+
+    function _addTokensToAllTokensEnumeration(uint _tokenId) private {
+        _idToNftIndex[_tokenId] = _allNfts.length;
+        _allNfts.push(_tokenId);
+    }
+
+    function _addTokenToOwnerEnumeration(address to, uint _tokenid) private {
+        uint length = ERC721.balanceOf(to);
+        _ownedTokens[to][length] = _tokenId;
+        _idToOwnedIndex[_tokenId] = length
+
+    }
+
+    function _removeTokenFromOwnerEnumeration(address from, uint _tokenId) private {
+        uint lastTokenIndex = ERC721.balanceOf(from);
+        uint tokenIndex = _idToOwnedIndex[_tokenId];
+
+        if (tokenIndex != lastTokenIndex) {
+            uint lastTokenId = _ownedTokens[form][lastTokenIndex];
+
+            _ownedTokens[from][tokenIndex] = lastTokenId;
+            _idToOwnedIndex[lastTokenId] = tokenIndex;
+        }
+
+        delete _idToOwnedIndex[_tokenId];
+        delete _ownedTokens[from][lastTokenIndex];
+
+    }
+
+    //function to remove NFT from sale
+    function _removeTokenFromAllTokensEnumeration(uint _tokenId) private {
+        uint lastTokenIndex = _allNfts.length - 1;
+        uint tokenIndex = _idToNftIndex[_tokenId];
+        uint lastTokenId = _allNfts[lastTokenIndex];
+
+        _allNfts[tokenIndex] = lastTokenId;
+        _idToNftIndex[lastTokenId] = tokenIndex;
+
+        delete _idToNftIndex[_tokenId];
+        _allNfts.pop();
+    }
 
 }
