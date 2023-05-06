@@ -88,7 +88,6 @@ contract NftMarket is ERC721URIStorage, Ownable {
         }
 
         return items;
-
     }
 
     //This is for getting owned NFT
